@@ -1,0 +1,267 @@
+import React, { useState, useMemo } from 'react';
+
+// Pricing configuration matrix - easily adjustable
+const PRICING_CONFIG = {
+  services: {
+    software: { name: 'Custom Software Dev', basePrice: 15000, scaleLabel: 'Modules/Features' },
+    network: { name: 'Network Infrastructure', basePrice: 12000, scaleLabel: 'Nodes/Workstations' },
+    cybersecurity: { name: 'Cybersecurity & Audit', basePrice: 18000, scaleLabel: 'Systems/Endpoints' },
+  },
+  urgency: {
+    relaxed: { name: 'Relaxed (Standard Turnaround)', multiplier: 1.0 },
+    standard: { name: 'Priority (Standard Timeline)', multiplier: 1.2 },
+    rush: { name: 'Critical Rush (Express Delivery)', multiplier: 1.5 },
+  },
+  addons: {
+    support: { name: 'Premium 24/7 SLA Support', price: 4500 },
+    audit: { name: 'Post-Deployment Security Audit', price: 6000 },
+  }
+};
+
+export default function QuoteEstimator() {
+  // State management for user choices
+  const [service, setService] = useState('software');
+  const [scale, setScale] = useState(3);
+  const [urgency, setUrgency] = useState('standard');
+  const [selectedAddons, setSelectedAddons] = useState({
+    support: false,
+    audit: false,
+  });
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  // Toggle add-on state
+  const handleAddonToggle = (key) => {
+    setSelectedAddons(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Dynamic price calculation
+  const calculations = useMemo(() => {
+    const activeService = PRICING_CONFIG.services[service];
+    const activeUrgency = PRICING_CONFIG.urgency[urgency];
+    
+    const basePrice = activeService.basePrice;
+    const scaleCost = scale * (basePrice * 0.15); // 15% of base price per scale increment
+    const subtotal = basePrice + scaleCost;
+    
+    const urgencyCost = (subtotal * activeUrgency.multiplier) - subtotal;
+    
+    let addonsCost = 0;
+    Object.keys(selectedAddons).forEach(key => {
+      if (selectedAddons[key]) {
+        addonsCost += PRICING_CONFIG.addons[key].price;
+      }
+    });
+
+    const total = subtotal + urgencyCost + addonsCost;
+
+    return {
+      basePrice,
+      scaleCost,
+      urgencyCost,
+      addonsCost,
+      total: Math.round(total),
+    };
+  }, [service, scale, urgency, selectedAddons]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setIsSubmitted(true);
+    // Handle the payload data injection here (e.g., EmailJS, Formspree, or backend endpoint)
+    console.log('RFQ Payload:', { service, scale, urgency, selectedAddons, total: calculations.total });
+  };
+
+  return (
+    <div className="w-full max-w-5xl mx-auto bg-zinc-950 text-zinc-100 border border-zinc-800 rounded-xl overflow-hidden shadow-2xl font-sans">
+      {/* Header Bar */}
+      <div className="bg-zinc-900 px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+          <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+          <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+          <span className="text-xs font-mono text-zinc-500 ml-2">monologue_solutions_quote_engine.sh</span>
+        </div>
+        <span className="text-xs font-mono text-cyan-400 bg-cyan-950/50 border border-cyan-800/30 px-2 py-0.5 rounded">
+          v2.4.0-stable
+        </span>
+      </div>
+
+      {isSubmitted ? (
+        <div className="p-12 text-center flex flex-col items-center justify-center min-h-[450px]">
+          <div className="w-16 h-16 bg-cyan-950 border border-cyan-500 text-cyan-400 rounded-full flex items-center justify-center mb-6 text-2xl animate-pulse">
+            ✓
+          </div>
+          <h3 className="text-2xl font-bold mb-2">RFQ Transmitted Successfully</h3>
+          <p className="text-zinc-400 max-w-md mx-auto mb-6 text-sm">
+            Your project blueprint configuration has been compiled. I will review the architecture metrics and get back to you shortly.
+          </p>
+          <button 
+            onClick={() => setIsSubmitted(false)}
+            className="text-xs font-mono text-zinc-500 hover:text-cyan-400 underline transition-colors"
+          >
+            [ Reconfigure Matrix ]
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-12">
+          {/* Inputs Section */}
+          <form onSubmit={handleSubmit} className="p-6 md:p-8 md:col-span-7 space-y-6">
+            
+            {/* Step 1: Core Architecture Selection */}
+            <div>
+              <label className="block text-xs font-mono text-zinc-400 tracking-wider uppercase mb-3">
+                01 // Select Core Architecture
+              </label>
+              <div className="grid grid-cols-1 gap-3">
+                {Object.entries(PRICING_CONFIG.services).map(([key, value]) => (
+                  <label 
+                    key={key}
+                    className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all ${
+                      service === key 
+                        ? 'bg-zinc-900 border-cyan-500 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]' 
+                        : 'bg-zinc-900/40 border-zinc-800 text-zinc-400 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <input 
+                        type="radio" 
+                        name="serviceType" 
+                        value={key}
+                        checked={service === key}
+                        onChange={() => { setService(key); setScale(3); }}
+                        className="sr-only"
+                      />
+                      <span className="font-medium text-sm text-zinc-200">{value.name}</span>
+                    </div>
+                    <span className="text-xs font-mono opacity-80">Base: R{value.basePrice.toLocaleString()}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Step 2: Scale Factor */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-xs font-mono text-zinc-400 tracking-wider uppercase">
+                  02 // Project Scale Factor
+                </label>
+                <span className="text-xs font-mono text-cyan-400 bg-cyan-950/40 border border-cyan-900/50 px-2 py-0.5 rounded">
+                  {scale} {PRICING_CONFIG.services[service].scaleLabel}
+                </span>
+              </div>
+              <div className="bg-zinc-900/40 border border-zinc-800 p-4 rounded-lg">
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="10" 
+                  value={scale}
+                  onChange={(e) => setScale(Number(e.target.value))}
+                  className="w-full accent-cyan-500 bg-zinc-800 h-2 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-zinc-600 mt-2">
+                  <span>MIN [1]</span>
+                  <span>MID [5]</span>
+                  <span>MAX [10]</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Deployment Timeline */}
+            <div>
+              <label className="block text-xs font-mono text-zinc-400 tracking-wider uppercase mb-2">
+                03 // Deployment Urgency
+              </label>
+              <select 
+                value={urgency} 
+                onChange={(e) => setUrgency(e.target.value)}
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-zinc-300 focus:outline-none focus:border-cyan-500 transition-colors font-mono"
+              >
+                {Object.entries(PRICING_CONFIG.urgency).map(([key, value]) => (
+                  <option key={key} value={key} className="bg-zinc-950 text-zinc-300">
+                    {value.name} (x{value.multiplier.toFixed(1)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Step 4: Supplemental Modules */}
+            <div>
+              <label className="block text-xs font-mono text-zinc-400 tracking-wider uppercase mb-3">
+                04 // Supplemental Modules
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {Object.entries(PRICING_CONFIG.addons).map(([key, value]) => (
+                  <button
+                    type="button"
+                    key={key}
+                    onClick={() => handleAddonToggle(key)}
+                    className={`p-3 rounded-lg border text-left flex flex-col justify-between transition-all ${
+                      selectedAddons[key]
+                        ? 'bg-zinc-900 border-cyan-500 text-cyan-400'
+                        : 'bg-zinc-900/20 border-zinc-800 text-zinc-500 hover:border-zinc-800'
+                    }`}
+                  >
+                    <span className={`text-xs font-medium ${selectedAddons[key] ? 'text-zinc-200' : 'text-zinc-400'}`}>
+                      {value.name}
+                    </span>
+                    <span className="text-[11px] font-mono mt-2 block opacity-80">+ R{value.price.toLocaleString()}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </form>
+
+          {/* Dynamic "Terminal Output" Summary Side-panel */}
+          <div className="p-6 md:p-8 bg-zinc-900/60 md:col-span-5 border-t md:border-t-0 md:border-l border-zinc-800 flex flex-col justify-between font-mono">
+            <div>
+              <div className="text-xs text-zinc-500 border-b border-zinc-800 pb-3 mb-4 flex justify-between items-center">
+                <span>STDOUT // COST_BREAKDOWN</span>
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              </div>
+              
+              <div className="space-y-3 text-xs tracking-wide">
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Base System:</span>
+                  <span className="text-zinc-300">R{calculations.basePrice.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Scale Scaling Matrix:</span>
+                  <span className="text-zinc-300">+R{calculations.scaleCost.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Urgency Overhead:</span>
+                  <span className="text-zinc-300">+R{calculations.urgencyCost.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-b border-zinc-800/60 pb-3">
+                  <span className="text-zinc-500">Add-on Dependencies:</span>
+                  <span className="text-zinc-300">+R{calculations.addonsCost.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-2">
+                <span className="text-[10px] text-cyan-500 block mb-1">// ROUGH ESTIMATE MATRIX</span>
+                <div className="text-3xl font-bold text-cyan-400 tracking-tight">
+                  R{calculations.total.toLocaleString()}
+                  <span className="text-xs text-zinc-500 font-normal ml-1">ZAR</span>
+                </div>
+                <p className="text-[10px] text-zinc-500 mt-2 leading-relaxed">
+                  *Generated estimates are non-binding calculations based on localized system configurations. Final architectural specifications may vary.
+                </p>
+              </div>
+            </div>
+
+            {/* Form Submission Action */}
+            <div className="mt-8 md:mt-0">
+              <button
+                onClick={handleSubmit}
+                className="w-full bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold py-3 px-4 rounded-lg text-xs tracking-wider uppercase transition-colors shadow-[0_4px_20px_rgba(6,182,212,0.25)] focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-zinc-900"
+              >
+                Execute & Generate RFQ
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
